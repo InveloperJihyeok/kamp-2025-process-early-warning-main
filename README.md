@@ -80,21 +80,3 @@ jupyter notebook dashboard.ipynb           # 3단계 → http://127.0.0.1:5432
 | 소입로 온도 4 Zone | LSTM (lr 0.01, L1) | 0.312 | 0.456 |
 
 **실시간 모니터링(팀원 구현).** 마지막 배정번호 데이터를 1초 간격으로 재생, 처음 300초는 warm-up, 이후 60초마다 최근 300초를 10초로 리샘플링해 ONNX 모델로 60스텝 예측. 예측값 중 하나라도 정상 범위를 벗어나면 변수별 알람 램프 점등.
-
-## 참고
-
-- KAMP 열처리 공정최적화 AI 데이터셋 (https://www.kamp-ai.kr)
-- Zeng et al., *Are Transformers Effective for Time Series Forecasting?* (AAAI 2023) — DLinear · NLinear 구현 참고
-
-## 검증 상태 (2026-11-02)
-
-| 구성 요소 | 검증 방법 | 결과 |
-|---|---|---|
-| `analyze.ipynb` | `nbconvert --execute` 로 전체 셀 실행 (`data/unified.csv` 기준) | 오류 없음. 0% 그룹의 소입로 온도 1 Zone 최저 850.135 °C 등 보고서 수치와 일치 |
-| `models/DLinear.py` · `NLinear.py` · `LSTM.py` | 노트북과 같은 설정(seq_len 30, pred_len 60, enc_in 1, moving_avg 25)으로 forward | 세 모델 모두 입력 (4, 30, 1) → 출력 (4, 60, 1) |
-| `onnx/*.onnx` | onnxruntime CPU 추론 | 세 모델 모두 입력 (batch, 30, 1) → 출력 (1, 60, 1) |
-| `predict.ipynb` | 36개 조합 학습은 시간상 재실행하지 않음 (GPU 필요) | 결과는 `result.csv` 참고 |
-| `dashboard.ipynb` | Flask 서버는 재실행하지 않음 (팀원 구현) | 의존 패키지(flask · onnxruntime) import 확인 |
-| `exploration/model.py` | 더미 입력 forward | 출력 (3, 1) |
-
-# kamp-2025-process-early-warning-main
