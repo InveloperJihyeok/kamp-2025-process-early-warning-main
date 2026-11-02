@@ -15,7 +15,7 @@
 |---|---|---|---|
 | 데이터 선정 · 탐색 | KAMP 데이터셋 3종(소성가공 · 사출성형 · 열처리) EDA, 사출성형 수주량 예측 베이스라인 | `exploration/` | 최지혁 |
 | 1. 전처리 · 통계 분석 | 결측 제거 · 선형 보간 · 10초 리샘플링, 배정번호별 최고 · 최저 온도 추출, Welch t-test · Cohen's d · Mann-Whitney U 로 핵심 변수 3개 선정 | `analyze.ipynb`, `data/unified.csv`, `data/analyze.csv` | 최지혁 |
-| 2. 시계열 예측 모델 | 배정번호 단위 슬라이딩 윈도우 데이터셋, DLinear · NLinear · LSTM × 학습률 2 × 손실함수 2 = 36개 조합 실험, MAE · RMSE · SMAPE 평가 | `predict.ipynb`, `models/`, `result.csv`, `scaler.pkl` | 최지혁 |
+| 2. 시계열 예측 모델 | 배정번호 단위 슬라이딩 윈도우 데이터셋, 3개 모델(DLinear · NLinear · LSTM) × 3개 타겟 변수 × 학습률 2 × 손실함수 2 = 36개 조합 실험, MAE · RMSE · SMAPE 평가 | `predict.ipynb`, `models/`, `result.csv`, `scaler.pkl` | 최지혁 |
 | 3. ONNX 변환 · 대시보드 | 최적 모델 ONNX export, Flask 서버(1초 스트리밍 · 1분 주기 추론 · 임계값 알람), Chart.js 대시보드 | `onnx/`, `dashboard.ipynb`, `templates/` | 팀원 |
 
 이 저장소는 팀 제출물 전체를 담되, 3단계(ONNX · Flask)는 팀원이 구현한 코드임을 명시함.
