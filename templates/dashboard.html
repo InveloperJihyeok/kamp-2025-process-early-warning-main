@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>상세 공정 페이지</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { 
+      font-family: 'Malgun Gothic', Arial; 
+      margin: 0; 
+      padding: 16px; 
+      background-color: #f5f7fa; 
+    }
+    h1 { 
+      text-align: center; 
+      color: #2c3e50; 
+      margin: 10px 0 20px; 
+      font-size: 26px; 
+    }
+    .btn-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .btn { 
+      display: inline-block;
+      padding: 10px 20px; 
+      border: none; 
+      border-radius: 6px;
+      background: #28a745; 
+      color: #fff; 
+      font-size: 14px; 
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { 
+      background: #218838; 
+    }
+    
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .section-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    
+    .section-card h2 {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+      color: #34495e;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 8px;
+    }
+    
+    canvas {
+      width: 100% !important;
+      height: 220px !important;
+    }
+    
+    .status-bar {
+      text-align: center;
+      font-size: 13px;
+      color: #555;
+      margin-top: 20px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+  </style>
+</head>
+<body>
+  <h1>상세 공정 모니터링</h1>
+  
+  <div class="btn-container">
+    <a href="/" class="btn">메인 대시보드로 돌아가기</a>
+  </div>
+  
+  <div class="section-grid">
+    <div class="section-card">
+      <h2>건조 1존 OP</h2>
+      <canvas id="chart_dry_op_1"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>건조 2존 OP</h2>
+      <canvas id="chart_dry_op_2"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>건조로 온도 1 Zone</h2>
+      <canvas id="chart_dry_temp_1"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>건조로 온도 2 Zone</h2>
+      <canvas id="chart_dry_temp_2"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>세정기</h2>
+      <canvas id="chart_wash"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입 1존 OP</h2>
+      <canvas id="chart_quench_1"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입 2존 OP</h2>
+      <canvas id="chart_quench_2"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입 3존 OP</h2>
+      <canvas id="chart_quench_3"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입 4존 OP</h2>
+      <canvas id="chart_quench_4"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입로 CP 값</h2>
+      <canvas id="chart_furnace_op"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입로 온도 1 Zone</h2>
+      <canvas id="chart_furnace_temp_1"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입로 온도 2 Zone</h2>
+      <canvas id="chart_furnace_temp_2"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입로 온도 3 Zone</h2>
+      <canvas id="chart_furnace_temp_3"></canvas>
+    </div>
+    
+    <div class="section-card">
+      <h2>소입로 온도 4 Zone</h2>
+      <canvas id="chart_furnace_temp_4"></canvas>
+    </div>
+  </div>
+  
+  <div class="status-bar" id="status">
+    데이터 수신 중...
+  </div>
+
+  <script>
+    const COLORS = ["#3498db", "#e67e22", "#2ecc71", "#9b59b6", "#e74c3c", "#1abc9c"];
+    const charts = {};
+    const MAX_POINTS = 60;
+
+    function createChart(canvasId, label, color) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: label,
+            data: [],
+            borderColor: color,
+            backgroundColor: color + '20',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            x: {
+              display: true,
+              grid: { display: false }
+            },
+            y: {
+              display: true,
+              grid: { color: '#e0e0e0' }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    window.onload = function() {
+      charts.dry_op_1 = createChart('chart_dry_op_1', '건조 1존 OP', COLORS[0]);
+      charts.dry_op_2 = createChart('chart_dry_op_2', '건조 2존 OP', COLORS[1]);
+      charts.dry_temp_1 = createChart('chart_dry_temp_1', '건조로 온도 1 Zone', COLORS[2]);
+      charts.dry_temp_2 = createChart('chart_dry_temp_2', '건조로 온도 2 Zone', COLORS[3]);
+      charts.wash = createChart('chart_wash', '세정기', COLORS[4]);
+      charts.quench_1 = createChart('chart_quench_1', '소입 1존 OP', COLORS[5]);
+      charts.quench_2 = createChart('chart_quench_2', '소입 2존 OP', COLORS[0]);
+      charts.quench_3 = createChart('chart_quench_3', '소입 3존 OP', COLORS[1]);
+      charts.quench_4 = createChart('chart_quench_4', '소입 4존 OP', COLORS[2]);
+      charts.furnace_op = createChart('chart_furnace_op', '소입로 CP 값', COLORS[3]);
+      charts.furnace_temp_1 = createChart('chart_furnace_temp_1', '소입로 온도 1 Zone', COLORS[4]);
+      charts.furnace_temp_2 = createChart('chart_furnace_temp_2', '소입로 온도 2 Zone', COLORS[5]);
+      charts.furnace_temp_3 = createChart('chart_furnace_temp_3', '소입로 온도 3 Zone', COLORS[0]);
+      charts.furnace_temp_4 = createChart('chart_furnace_temp_4', '소입로 온도 4 Zone', COLORS[1]);
+
+      async function updateData() {
+        try {
+          const response = await fetch('/latest');
+          const data = await response.json();
+          
+          const timeLabel = (data.timestamp || '').split(' ')[1] || '';
+          const sections = data.sections;
+
+          updateChart(charts.dry_op_1, timeLabel, sections.dry_op.values[0]);
+          updateChart(charts.dry_op_2, timeLabel, sections.dry_op.values[1]);
+          updateChart(charts.dry_temp_1, timeLabel, sections.dry_temp.values[0]);
+          updateChart(charts.dry_temp_2, timeLabel, sections.dry_temp.values[1]);
+          updateChart(charts.wash, timeLabel, sections.wash.values[0]);
+          updateChart(charts.quench_1, timeLabel, sections.quench.values[0]);
+          updateChart(charts.quench_2, timeLabel, sections.quench.values[1]);
+          updateChart(charts.quench_3, timeLabel, sections.quench.values[2]);
+          updateChart(charts.quench_4, timeLabel, sections.quench.values[3]);
+          updateChart(charts.furnace_op, timeLabel, sections.furnace_op.values[0]);
+          updateChart(charts.furnace_temp_1, timeLabel, sections.furnace_temp.values[0]);
+          updateChart(charts.furnace_temp_2, timeLabel, sections.furnace_temp.values[1]);
+          updateChart(charts.furnace_temp_3, timeLabel, sections.furnace_temp.values[2]);
+          updateChart(charts.furnace_temp_4, timeLabel, sections.furnace_temp.values[3]);
+
+          document.getElementById('status').textContent = 
+            `${timeLabel} | 진행: ${data.current_index} / ${data.total_rows}`;
+
+        } catch (error) {
+          console.error('데이터 업데이트 실패:', error);
+        }
+      }
+
+      function updateChart(chart, label, value) {
+        chart.data.labels.push(label);
+        chart.data.datasets[0].data.push(value);
+
+        if (chart.data.labels.length > MAX_POINTS) {
+          chart.data.labels.shift();
+          chart.data.datasets[0].data.shift();
+        }
+
+        chart.update('none');
+      }
+
+      updateData();
+      setInterval(updateData, 1000);
+    };
+  </script>
+</body>
+</html>

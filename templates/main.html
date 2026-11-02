@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>실시간 공정 불량률 예측 대시보드</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family:'Malgun Gothic',Arial;margin:16px;background-color:#f5f7fa; }
+    h1 { text-align:center;color:#2c3e50;margin:10px 0 6px;font-size:24px; }
+    .btn { display:block;margin:8px auto 16px;padding:8px 18px;border:none;border-radius:6px;
+           background:#007bff;color:#fff;font-size:14px;cursor:pointer; }
+    .btn:hover { background:#0056b3; }
+    .forecast-grid { display:grid;grid-template-columns:4fr 1fr;grid-row-gap:10px;grid-column-gap:14px;
+                     margin:6px auto 18px;max-width:1280px; }
+    .card { background:#fff;border-radius:8px;padding:10px;box-shadow:0 2px 4px rgba(0,0,0,0.06); }
+    .card h3 { margin:4px 0 8px;font-size:14px;color:#34495e;text-align:left; }
+    .traffic { display:flex;flex-direction:column;align-items:center;justify-content:center;
+               height:100%;font-size:13px;color:#2c3e50; }
+    .lamp { width:20px;height:20px;border-radius:50%;margin-bottom:6px;box-shadow:0 0 8px rgba(0,0,0,0.08);}
+    .lamp.green{background:#2ecc71;} .lamp.red{background:#e74c3c;}
+    canvas.forecast{width:100%!important;height:160px!important;}
+    canvas.realtime{width:100%!important;height:180px!important;}
+    .rt-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:1280px;margin:0 auto;}
+    .status{text-align:center;font-size:12px;color:#555;margin-top:10px;}
+  </style>
+</head>
+<body>
+  <h1>실시간 공정 온도 예측 대시보드</h1>
+  <button class="btn" onclick="window.location.href='/dashboard'">상세 공정 보기</button>
+  <div class="forecast-grid">
+    <div class="card"><h3>건조로 온도 2존 (하한 98.88)</h3><canvas id="fc_dry" class="forecast"></canvas></div>
+    <div class="card traffic"><div class="lamp" id="lamp_dry"></div><div>건조 예측</div></div>
+    <div class="card"><h3>소입로 온도 1존 (하한 850.13)</h3><canvas id="fc_quench" class="forecast"></canvas></div>
+    <div class="card traffic"><div class="lamp" id="lamp_quench"></div><div>소입로 예측</div></div>
+    <div class="card"><h3>소입로 온도 4존 (상한 858.71)</h3><canvas id="fc_furnace" class="forecast"></canvas></div>
+    <div class="card traffic"><div class="lamp" id="lamp_furnace"></div><div>소입로 예측</div></div>
+  </div>
+  <div class="rt-grid">
+    <div class="card"><h3>건조로 온도 2존 (실시간)</h3><canvas id="rt_dry" class="realtime"></canvas></div>
+    <div class="card"><h3>소입로 온도 1존 (실시간)</h3><canvas id="rt_quench" class="realtime"></canvas></div>
+    <div class="card"><h3>소입로 온도 4존 (실시간)</h3><canvas id="rt_furnace" class="realtime"></canvas></div>
+  </div>
+  <p id="status" class="status">데이터 수신 중...</p>
+  <script>
+    const fcCharts={},rtCharts={};
+    const COLORS=["#3498db","#e67e22","#2ecc71"];
+    const thresholds={dry:98.88,quench:850.13,furnace:858.71};
+
+    function makeChart(ctx,label,thr,minY,maxY){
+      const datasets=[{label:label,data:[],borderColor:COLORS[0],borderWidth:2,fill:false,pointRadius:1}];
+      if(thr!==null){
+        datasets.push({label:'임계값',data:[],borderColor:'#ff0000',borderWidth:1.5,fill:false,pointRadius:0,borderDash:[6,4]});
+      }
+      return new Chart(ctx,{
+        type:'line',
+        data:{labels:[],datasets:datasets},
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          animation:false,
+          scales:{
+            x:{display:true,grid:{display:false}},
+            y:{display:true,min:minY,max:maxY,grid:{color:'#e0e0e0'}}
+          },
+          plugins:{legend:{display:true,position:'top'}}
+        }
+      });
+    }
+
+    window.onload=async function(){
+      console.log('Initializing charts...');
+      fcCharts.dry=makeChart(document.getElementById('fc_dry').getContext('2d'),'건조로 온도 2존 예측',thresholds.dry,97,101);
+      fcCharts.quench=makeChart(document.getElementById('fc_quench').getContext('2d'),'소입로 온도 1존 예측',thresholds.quench,840,860);
+      fcCharts.furnace=makeChart(document.getElementById('fc_furnace').getContext('2d'),'소입로 온도 4존 예측',thresholds.furnace,850,870);
+
+      rtCharts.dry=makeChart(document.getElementById('rt_dry').getContext('2d'),'건조로 온도 2존',null,97,101);
+      rtCharts.quench=makeChart(document.getElementById('rt_quench').getContext('2d'),'소입로 온도 1존',null,840,860);
+      rtCharts.furnace=makeChart(document.getElementById('rt_furnace').getContext('2d'),'소입로 온도 4존',null,850,870);
+      console.log('Charts initialized');
+
+      async function tick(){
+        try {
+          const r=await fetch('/latest');
+          const d=await r.json();
+          
+          const t=(d.timestamp||'').split(' ')[1];
+          const s=d.sections;
+          
+          // 실시간 차트 업데이트
+          rtCharts.dry.data.labels.push(t);
+          rtCharts.dry.data.datasets[0].data.push(s.dry_temp.values[1]);
+          rtCharts.quench.data.labels.push(t);
+          rtCharts.quench.data.datasets[0].data.push(s.furnace_temp.values[0]);
+          rtCharts.furnace.data.labels.push(t);
+          rtCharts.furnace.data.datasets[0].data.push(s.furnace_temp.values[3]);
+          
+          Object.values(rtCharts).forEach(c=>{
+            if(c.data.labels.length>60){
+              c.data.labels.shift();
+              c.data.datasets[0].data.shift();
+            }
+            c.update('none');
+          });
+          
+          // 예측 차트 업데이트
+          const f=d.forecast;
+          
+          if(f && f.labels && f.labels.length > 0 && f.series){
+            ['dry','quench','furnace'].forEach(k=>{
+              const ck=fcCharts[k];
+              const keymap={dry:'dry_temp_2',quench:'quench_temp_1',furnace:'quench_temp_4'};
+              const key=keymap[k];
+              
+              if(f.series[key] && f.series[key].length > 0){
+                ck.data.labels=f.labels.map(x=>x.split(' ')[1]);
+                ck.data.datasets[0].data=f.series[key];
+                
+                if(ck.data.datasets[1]){
+                  ck.data.datasets[1].data=Array(f.labels.length).fill(thresholds[k]);
+                }
+                
+                ck.update('none');
+              }
+            });
+            
+            // 램프 업데이트
+            const lamps={
+              dry:document.getElementById('lamp_dry'),
+              quench:document.getElementById('lamp_quench'),
+              furnace:document.getElementById('lamp_furnace')
+            };
+            const a=f.alarms;
+            Object.entries(a).forEach(([k,v])=>{
+              const n=k.includes('dry')?'dry':k.includes('temp_1')?'quench':'furnace';
+              lamps[n].classList.remove('green','red');
+              lamps[n].classList.add(v?'red':'green');
+            });
+          }
+          
+          document.getElementById('status').textContent=t+' | '+d.current_index+'/'+d.total_rows+' | 예측 기준: '+(f.last_from||'N/A');
+        } catch(error) {
+          console.error('Error in tick:', error);
+        }
+      }
+      
+      tick();
+      setInterval(tick,1000);
+    };
+  </script>
+</body>
+</html>

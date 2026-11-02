@@ -1,0 +1,15 @@
+# KAMP 원본 데이터는 재배포하지 않는다 (KAMP 에서 직접 내려받아 data/ 에 둘 것)
+data/*
+!data/unified.csv
+!data/analyze.csv
+!data/label.csv
+exploration/data/*
+!exploration/data/sample.csv
+!exploration/data/product_order_stats.csv
+*.pth
+*.pt
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+.env
